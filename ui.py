@@ -14,7 +14,8 @@ def qr_frame():
         tk.wm_attributes('-topmost', 1)
 
     tk.geometry('320x320')
-    tk.wm_attributes('-transparentcolor', 'gray')
+    # tk.wm_attributes('-transparentcolor', 'gray')
+    tk.attributes('-alpha', 0.2)
     canvas = Canvas(tk)
     canvas.pack(fill=BOTH, expand=True, padx=10, pady=10)
     tk.bind('<Configure>', on_resize)

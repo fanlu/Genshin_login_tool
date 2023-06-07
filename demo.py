@@ -10,10 +10,11 @@ from hashlib import md5
 from typing import List
 
 import numpy as np
-import wmi
+
 import cv2 as cv
 import requests
-from pyautogui import screenshot
+# from pyautogui import screenshot
+from PIL import ImageGrab
 
 sys.path.append(os.path.abspath('.'))
 
@@ -68,7 +69,7 @@ class User:
                 return json_loads['data']['list']
 
     def __str__(self):
-        return f'name：{self.role[0]["nickname"]}\t{self.uid=};'
+        return f'role:{self.role[0]}\tuid:{self.uid}\tticket:{self.ticket}\tstoken:{self.stoken}\tgame_token:{self.game_token};'
 
 
 def parse_header_and_cookie(text: str):
@@ -86,19 +87,25 @@ def parse_cookie(text: str):
     return cookie_
 
 
-def get_qr_code():
+def get_qr_code(i):
     """
     识别桌面二维码
     :return:
     """
-    img = screenshot(region=region)
+    # img = screenshot(region=region)
+    # img = screenshot()
+    # (left, upper, right, lower)
+    x, y, width, height = region
+    # img = ImageGrab.grab((x*2, y*2, x*2+width*2, y*2+height*2))
+    img = ImageGrab.grab((x, y, x+width, y+height))
+    img.save('test%s.png'%str(i))
     img = np.array(img)
     # img = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
     return detector.detectAndDecode(img)[0]
     # return pyzbar.decode(image, [64])
 
 
-def get_qr_ticket():
+def get_qr_ticket(i):
     """
     获取ticket
     :return:
@@ -106,7 +113,7 @@ def get_qr_ticket():
     # barcodes = get_qr_code()
     # if barcodes:
     #     return barcodes[0].data.decode("UTF8")[-24:]
-    qr_code = get_qr_code()
+    qr_code = get_qr_code(i)
     if qr_code:
         return qr_code[0][-24:]
 
@@ -137,15 +144,17 @@ def load_users():
 
 def get_scan_session():
     sess = requests.Session()
-    url = 'https://api-sdk.mihoyo.com/hk4e_cn/combo/panda/qrcode/scan'
-    headers['DS'] = get_DS()
-    data_ = {}
-    sess.post(url, json=data_, headers=headers, cookies=cookies)
+    # url = 'https://api-sdk.mihoyo.com/hk4e_cn/combo/panda/qrcode/scan'
+    # headers['DS'] = get_DS()
+    # data_ = {}
+    # ret = sess.post(url, json=data_, headers=headers, cookies=cookies)
+    # print(ret.text)
     return sess
 
 
 def call_scan(t: str, sess: requests.Session):
     url = 'https://api-sdk.mihoyo.com/hk4e_cn/combo/panda/qrcode/scan'
+    sess.headers = headers
     sess.headers['DS'] = get_DS()
     data_ = {
         "app_id": "4",
@@ -192,6 +201,7 @@ def get_true_md5():
 
 
 def get_CPU_info():
+    import wmi
     cpu = []
     cp = wmi.WMI().Win32_Processor()
     for u in cp:
@@ -249,12 +259,13 @@ def main():
             user = users[idx - 1]
             cookies['stuid'] = user.uid
             cookies['stoken'] = user.stoken
-            print(f'开始使用【{user.role[0]["nickname"]}】连续扫码')
+            print(f'开始使用【{user.role[0]["nickname"]},{user.role[0]}】连续扫码')
+            import pdb;pdb.set_trace()
             session = get_scan_session()
             for i in range(10000):
                 # 识别
                 t0 = time.time()
-                ticket = get_qr_ticket()
+                ticket = get_qr_ticket(i)
                 if not ticket:
                     continue
                 # 扫码
@@ -276,7 +287,7 @@ def main():
                     else:
                         print(f'登录失败：{res}')
                 else:
-                    print(f'抢码失败')
+                    print(f'抢码失败{res}')
 
 
 def check_the_authorization():
@@ -298,7 +309,7 @@ if __name__ == '__main__':
     # 检查授权
     # if time.time() - 1676096147 > 2 * 24 * 60 * 60:
     #     sys.exit(0)
-    check_the_authorization()
+    # check_the_authorization()
     # 变量
     users: List[User] = load_users()
     cookies = {
@@ -307,8 +318,8 @@ if __name__ == '__main__':
         'mid': '043co169fb_mhy'
     }
     warnings.filterwarnings("ignore")
-    salt = 'PVeGWIZACpxXZ1ibMVJPi9inCY4Nd4y2'
-    app_version = '2.38.1'
+    salt = 'A4lPYtN0KGRVwE5M5Fm0DqQiC5VVMVM3'
+    app_version = '2.50.1'
     detector = cv.wechat_qrcode_WeChatQRCode()
     headers = {
         'DS': '',
