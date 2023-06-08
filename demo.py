@@ -18,7 +18,7 @@ from PIL import ImageGrab
 
 sys.path.append(os.path.abspath('.'))
 
-
+detector = cv.wechat_qrcode_WeChatQRCode()
 class User:
     def __init__(self, web_cookie):
         self.web_cookie = web_cookie
@@ -87,7 +87,7 @@ def parse_cookie(text: str):
     return cookie_
 
 
-def get_qr_code(i):
+def get_qr_code(i, region):
     """
     识别桌面二维码
     :return:
@@ -105,7 +105,7 @@ def get_qr_code(i):
     # return pyzbar.decode(image, [64])
 
 
-def get_qr_ticket(i):
+def get_qr_ticket(i, region):
     """
     获取ticket
     :return:
@@ -113,12 +113,19 @@ def get_qr_ticket(i):
     # barcodes = get_qr_code()
     # if barcodes:
     #     return barcodes[0].data.decode("UTF8")[-24:]
-    qr_code = get_qr_code(i)
+    # qr_code = get_qr_code(i, region)
+    x, y, width, height = region
+    # img = ImageGrab.grab((x*2, y*2, x*2+width*2, y*2+height*2))
+    img = ImageGrab.grab((x, y, x+width, y+height))
+    img = np.array(img)
+    # img = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
+    qr_code = detector.detectAndDecode(img)[0]
     if qr_code:
+        # img.save('test%s.png'%str(i))
         return qr_code[0][-24:]
 
 
-def get_DS():
+def get_DS(salt):
     """
     获取DS
     :return:
@@ -152,10 +159,10 @@ def get_scan_session():
     return sess
 
 
-def call_scan(t: str, sess: requests.Session):
+def call_scan(t: str, sess: requests.Session, slat: str):
     url = 'https://api-sdk.mihoyo.com/hk4e_cn/combo/panda/qrcode/scan'
-    sess.headers = headers
-    sess.headers['DS'] = get_DS()
+    # sess.headers = headers
+    sess.headers['DS'] = get_DS(slat)
     data_ = {
         "app_id": "4",
         "device": "d9951154-6eea-35e8-9e46-20c53f440ac7",
@@ -165,15 +172,18 @@ def call_scan(t: str, sess: requests.Session):
     return response
 
 
-def call_confirm(u: User, t: str, sess: requests.Session):
+def call_confirm(u: User, t: str, sess: requests.Session, slat: str):
     # print('向服务器发送确认信息')
     url = 'https://api-sdk.mihoyo.com/hk4e_cn/combo/panda/qrcode/confirm'
-    sess.headers['DS'] = get_DS()
+    sess.headers['DS'] = get_DS(slat)
     data_ = {"app_id": 4,
              "device": "d9951154-6eea-35e8-9e46-20c53f440ac7",
              "payload": {"proto": "Account",
                          "raw": "{\"uid\":\"%s\",\"token\":\"%s\"}" % (u.uid, u.game_token)},
              "ticket": t}
+    print(sess.headers)
+    print(data_)
+    print(cookies)
     response = sess.post(url, json=data_, cookies=cookies)
     return response
 
@@ -210,84 +220,88 @@ def get_CPU_info():
 
 
 def main():
-    while True:
-        order = input('\n-----------------\n'
-                      '1. 显示用户信息\n'
-                      '2. 添加用户\n'
-                      '3. 删除用户\n'
-                      '4. 开始扫码\n'
-                      '0. 退出\n'
-                      '请输入：')
-        if order == '0':
-            sys.exit(0)
-        elif order == '1':
-            for i, user in enumerate(users):
-                print(i + 1, user, sep='\t')
-        elif order == '2':
-            cookie_new_user = input('请输入cookie：')
-            try:
-                user = User(cookie_new_user)
-            except ValueError:
-                print('解析失败，请检查cookie格式')
-            else:
-                if user.stoken:
-                    users.append(user)
-                    save_users()
-                    print('添加成功')
-                else:
-                    print('添加失败，请检查cookie正确性')
-        elif order == '3':
-            idx = input('请输入待删除的用户编号：')
-            if idx.isdigit() and 0 < int(idx) < len(users) + 1:
-                idx = int(idx)
-                users.pop(idx - 1)
+    order = input('\n-----------------\n'
+                    '1. 显示用户信息\n'
+                    '2. 添加用户\n'
+                    '3. 删除用户\n'
+                    '4. 开始扫码\n'
+                    '0. 退出\n'
+                    '请输入：')
+    if order == '0':
+        sys.exit(0)
+    elif order == '1':
+        for i, user in enumerate(users):
+            print(i + 1, user, sep='\t')
+    elif order == '2':
+        cookie_new_user = input('请输入cookie：')
+        try:
+            user = User(cookie_new_user)
+        except ValueError:
+            print('解析失败，请检查cookie格式')
+        else:
+            if user.stoken:
+                users.append(user)
                 save_users()
-                print('删除成功')
+                print('添加成功')
             else:
-                print('你输入的数字不对')
-        elif order == '4':
-            while True:
-                try:
-                    idx = int(input('请选择你要使用的账号的序号：'))
-                    if not 0 < idx < len(users) + 1:
-                        raise ValueError
-                    else:
-                        break
-                except ValueError:
-                    print('请输入正确的序号')
-            login_sleep = bool(input('默认使用急速模式，输1使用慢登模式'))
-            user = users[idx - 1]
-            cookies['stuid'] = user.uid
-            cookies['stoken'] = user.stoken
-            print(f'开始使用【{user.role[0]["nickname"]},{user.role[0]}】连续扫码')
-            import pdb;pdb.set_trace()
-            session = get_scan_session()
-            for i in range(10000):
-                # 识别
-                t0 = time.time()
-                ticket = get_qr_ticket(i)
-                if not ticket:
-                    continue
-                # 扫码
-                t1 = time.time()
-                res = call_scan(ticket, sess=session)
-                print(f'第{i}次识别成功：{ticket}，用时：{t1 - t0:.4f}')
-                t2 = time.time()
-                # 确认
-                res = json.loads(res.text)
-                if login_sleep:
-                    time.sleep(random.random() + 1)
-                if res['retcode'] == 0:
-                    print(f'抢码成功：{t2 - t1:.4f}')
-                    res = call_confirm(user, ticket, session)
-                    t3 = time.time()
-                    res = json.loads(res.text)
-                    if res['retcode'] == 0:
-                        print(f'登录成功，耗时：{t3 - t2:.4f}')
-                    else:
-                        print(f'登录失败：{res}')
+                print('添加失败，请检查cookie正确性')
+    elif order == '3':
+        idx = input('请输入待删除的用户编号：')
+        if idx.isdigit() and 0 < int(idx) < len(users) + 1:
+            idx = int(idx)
+            users.pop(idx - 1)
+            save_users()
+            print('删除成功')
+        else:
+            print('你输入的数字不对')
+    elif order == '4':
+        while True:
+            try:
+                idx = int(input('请选择你要使用的账号的序号：'))
+                if not 0 < idx < len(users) + 1:
+                    raise ValueError
                 else:
-                    print(f'抢码失败{res}')
+                    break
+            except ValueError:
+                print('请输入正确的序号')
+        login_sleep = bool(input('默认使用急速模式，输1使用慢登模式'))
+        user = users[idx - 1]
+        scan_and_confirm(idx, region)
+
+def scan_and_confirm(user, region):
+    
+    cookies['stuid'] = user.uid
+    cookies['stoken'] = user.stoken
+    print(f'开始使用【{user.role[0]["nickname"]},{user.role[0]}】连续扫码')
+        # import pdb;pdb.set_trace()
+    session = get_scan_session()
+    for i in range(10000):
+            # 识别
+        t0 = time.time()
+        ticket = get_qr_ticket(i, region)
+        if not ticket:
+            continue
+        print(f'第{i}次detect{ticket}成功')
+            # 扫码
+        t1 = time.time()
+        res = call_scan(ticket, sess=session)
+        t2 = time.time()
+            # 确认
+        res = json.loads(res.text)
+        print(f'第{i}次call_scan返回{res["retcode"]}：{ticket}，用时：{t1 - t0:.4f}')
+        # if login_sleep:
+        #     time.sleep(random.random() + 1)
+        if res['retcode'] == 0:
+            print(f'抢码成功：{t2 - t1:.4f}')
+            res = call_confirm(user, ticket, session)
+            t3 = time.time()
+            res = json.loads(res.text)
+            if res['retcode'] == 0:
+                print(f'登录成功，耗时：{t3 - t2:.4f}')
+            else:
+                print(f'登录失败：{res}')
+        else:
+            print(f'抢码失败{res}')
 
 
 def check_the_authorization():
@@ -320,7 +334,7 @@ if __name__ == '__main__':
     warnings.filterwarnings("ignore")
     salt = 'A4lPYtN0KGRVwE5M5Fm0DqQiC5VVMVM3'
     app_version = '2.50.1'
-    detector = cv.wechat_qrcode_WeChatQRCode()
+    
     headers = {
         'DS': '',
         'x-rpc-client_type': '2',
@@ -339,6 +353,7 @@ if __name__ == '__main__':
     }
     with open('region.txt', 'r', encoding='u8') as f:
         region = tuple(json.load(f))
+    # import pdb;pdb.set_trace()
     print(f'\n二维码识别范围: {region}\n如需修改此范围，请开启“二维码定位”软件定位后（关闭软件保存定位），重启本软件。\n')
     # 主函数
     main()
