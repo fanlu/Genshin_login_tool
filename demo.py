@@ -172,7 +172,7 @@ def call_scan(t: str, sess: requests.Session, slat: str):
     return response
 
 
-def call_confirm(u: User, t: str, sess: requests.Session, slat: str):
+def call_confirm(u: User, t: str, sess: requests.Session, slat: str, cookies: dict):
     # print('向服务器发送确认信息')
     url = 'https://api-sdk.mihoyo.com/hk4e_cn/combo/panda/qrcode/confirm'
     sess.headers['DS'] = get_DS(slat)

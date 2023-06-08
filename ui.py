@@ -49,7 +49,7 @@ def qr_frame():
                 #     time.sleep(random.random() + 1)
                 if res['retcode'] == 0:
                     print(f'抢码成功：{t2 - t1:.4f}')
-                    res = call_confirm(tk.user, ticket, session, slat=salt)
+                    res = call_confirm(tk.user, ticket, session, slat=salt, cookies=cookies)
                     t3 = time.time()
                     res = json.loads(res.text)
                     if res['retcode'] == 0:
