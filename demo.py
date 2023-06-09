@@ -57,7 +57,7 @@ class User:
 
     def get_role(self):
         url = 'https://api-takumi.miyoushe.com/binding/api/getUserGameRolesByStoken'
-        headers['DS'] = get_DS()
+        headers['DS'] = get_DS(salt)
         get_url = requests.get(url,
                                cookies={'stuid': self.uid,
                                         'stoken': self.stoken,
@@ -220,53 +220,54 @@ def get_CPU_info():
 
 
 def main():
-    order = input('\n-----------------\n'
-                    '1. 显示用户信息\n'
-                    '2. 添加用户\n'
-                    '3. 删除用户\n'
-                    '4. 开始扫码\n'
-                    '0. 退出\n'
-                    '请输入：')
-    if order == '0':
-        sys.exit(0)
-    elif order == '1':
-        for i, user in enumerate(users):
-            print(i + 1, user, sep='\t')
-    elif order == '2':
-        cookie_new_user = input('请输入cookie：')
-        try:
-            user = User(cookie_new_user)
-        except ValueError:
-            print('解析失败，请检查cookie格式')
-        else:
-            if user.stoken:
-                users.append(user)
-                save_users()
-                print('添加成功')
-            else:
-                print('添加失败，请检查cookie正确性')
-    elif order == '3':
-        idx = input('请输入待删除的用户编号：')
-        if idx.isdigit() and 0 < int(idx) < len(users) + 1:
-            idx = int(idx)
-            users.pop(idx - 1)
-            save_users()
-            print('删除成功')
-        else:
-            print('你输入的数字不对')
-    elif order == '4':
-        while True:
+    while True:
+        order = input('\n-----------------\n'
+                        '1. 显示用户信息\n'
+                        '2. 添加用户\n'
+                        '3. 删除用户\n'
+                        '4. 开始扫码\n'
+                        '0. 退出\n'
+                        '请输入：')
+        if order == '0':
+            sys.exit(0)
+        elif order == '1':
+            for i, user in enumerate(users):
+                print(i + 1, user, sep='\t')
+        elif order == '2':
+            cookie_new_user = input('请输入cookie：')
             try:
-                idx = int(input('请选择你要使用的账号的序号：'))
-                if not 0 < idx < len(users) + 1:
-                    raise ValueError
-                else:
-                    break
+                user = User(cookie_new_user)
             except ValueError:
-                print('请输入正确的序号')
-        login_sleep = bool(input('默认使用急速模式，输1使用慢登模式'))
-        user = users[idx - 1]
-        scan_and_confirm(idx, region)
+                print('解析失败，请检查cookie格式')
+            else:
+                if user.stoken:
+                    users.append(user)
+                    save_users()
+                    print('添加成功')
+                else:
+                    print('添加失败，请检查cookie正确性')
+        elif order == '3':
+            idx = input('请输入待删除的用户编号：')
+            if idx.isdigit() and 0 < int(idx) < len(users) + 1:
+                idx = int(idx)
+                users.pop(idx - 1)
+                save_users()
+                print('删除成功')
+            else:
+                print('你输入的数字不对')
+        elif order == '4':
+            while True:
+                try:
+                    idx = int(input('请选择你要使用的账号的序号：'))
+                    if not 0 < idx < len(users) + 1:
+                        raise ValueError
+                    else:
+                        break
+                except ValueError:
+                    print('请输入正确的序号')
+            login_sleep = bool(input('默认使用急速模式，输1使用慢登模式'))
+            user = users[idx - 1]
+            scan_and_confirm(idx, region)
 
 def scan_and_confirm(user, region):
     

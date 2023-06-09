@@ -3,7 +3,7 @@ import json
 import tkinter
 import time
 import requests
-from tkinter import Tk, BOTH, Canvas, ttk
+from tkinter import *
 from demo import get_qr_ticket, call_scan, call_confirm, load_users, User
 
 
@@ -67,27 +67,43 @@ def qr_frame():
     def on_stop():
         tk.count = 0
         tk.poll = False
+
+    def select_user():
+        tk.user = users[var.get()]
+        cookies['stuid'] = tk.user.uid
+        cookies['stoken'] = tk.user.stoken
+        print(tk.user, cookies)
     
     tk = Tk()
-    tk.user = user
+    # tk.user = user
     tk.poll = True
     tk.count = 0
-    tk.geometry('320x320')
+    tk.geometry('320x360')
     # tk.wm_attributes('-transparentcolor', 'gray')
     # tk.wm_attributes('-topmost', 1)
     tk.attributes('-transparent', True)
    
     tk.attributes('-alpha', 0.8)
-    canvas = Canvas(tk)
-    canvas.pack(fill=BOTH, expand=True, padx=10, pady=10)
+    canvas = Canvas(tk, width=320, height=300, bg='gray', highlightthickness=0)
+    # canvas.pack(fill=BOTH, expand=True, padx=10, pady=10)
+    canvas.grid(row=0, column=0, columnspan=2)
     # button1 = tkinter.Button(tk, text='Button 1', command=print_position)
     # button1.pack()
     # 添加按钮以开始/停止循环
-    start = ttk.Button(tk, text="Start", command=on_start)
-    start.pack(padx=10)
+    var = IntVar()
+    var.set(0)
+    user = users[0]
+    cookies['stuid'] = user.uid
+    cookies['stoken'] = user.stoken
+    for i, user in enumerate(users):
+        Radiobutton(tk, text=user.role[0]["nickname"], variable=var, value=i, command=select_user).grid(row=1, column=i)
+        print(i + 1, user, sep='\t')
 
-    stop = ttk.Button(tk, text="Stop", command=on_stop)
-    stop.pack(padx=10)
+    start = Button(tk, text="Start", command=on_start)
+    start.grid(row=2, column=0)
+
+    stop = Button(tk, text="Stop", command=on_stop)
+    stop.grid(row=2, column=1)
     
     tk.bind('<Configure>', on_resize)
     # tk.bind('<ButtonRelease-1>', on_buttonrelease)
@@ -112,9 +128,7 @@ if __name__ == '__main__':
     salt = 'A4lPYtN0KGRVwE5M5Fm0DqQiC5VVMVM3'
     app_version = '2.50.1'
     users = load_users()
-    user = users[0]
-    cookies['stuid'] = user.uid
-    cookies['stoken'] = user.stoken
+    
     headers = {
         'DS': '',
         'x-rpc-client_type': '2',
